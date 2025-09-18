@@ -11,24 +11,25 @@ The recommended structure for common libraries:
 
 ```
 libs/
-├─ domain/          # Shared aggregates, VOs, events
-│  ├─  aggregate/   # Aggregates for multiple services
-│  ├─  model/       # Entities / Value Objects
-│  └─  event/       # Domain Events
+├─ domain/          # Shared models, events
+│  └─ src/main/kotlin/org/xankremi/quincunx/domain/
+│     ├─  model/    # Entity references / Value Objects (VO)
+│     └─  event/    # Domain Events
 │
 ├─ application/     # Shared commands, queries, DTOs
-│  ├─  command/     # Shared commands
-│  ├─  query/       # Shared queries
-│  └─  dto/         # Shared DTOs for inter-service communication
+│  └─ src/main/kotlin/org/xankremi/quincunx/domain/
+│     ├─  command/  # Shared commands
+│     ├─  query/    # Shared queries
+│     └─  dto/      # Shared DTOs for inter-service communication
 │
 ├─ infrastructure/  # Shared technical helpers
 │  ├─  mongo/       # Mongo converters, serializers, helpers
 │  ├─  elastic/     # Elasticsearch helpers
 │  ├─  ...
-│  └─ util/         # Serializers, converters, common utils
+│  └─  util/        # Serializers, converters, common utils
 │
-├─ interfaces/      # Shared interfaces / contracts
-│  ├─ messaging/    # Kafka / event bus contracts
+└─ interfaces/      # Shared interfaces / contracts
+   ├─ messaging/    # Kafka / event bus contracts
    └─ api/          # REST, gRPC, GraphQL interfaces
 ```
 
@@ -62,7 +63,7 @@ libs/
 flowchart LR
 subgraph Libs[Common Libraries]
 direction TB
-CoreDomain["lib/domain\n(Shared aggregates, VOs, events)"]
+CoreDomain["lib/domain\n(Shared models, events)"]
 CoreApp["lib/application\n(Shared commands, queries, DTOs)"]
 InfraMongo["infrastructure\n(Shared technical helpers)"]
 Interfaces["interfaces\n(Shared interfaces / contracts)"]

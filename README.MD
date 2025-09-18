@@ -7,11 +7,11 @@ Modular microservice-based platform using **DDD, CQRS, and Event Sourcing** prin
 ## 📁 Project Structure
 
 ```
-bank-platform/
-├─ libs/ # Common libraries shared across services
-├─ services/ # Microservices
-├─ infrastructure/docker/dev/ # Local dev environment (docker-compose & README)
-└─ docs/ # Documentation (architecture & style guides)
+quincunx/
+├─ docs/            # Documentation (architecture & style guides)
+├─ infrastructure   # Infrastructure (Local dev environment and etc.)
+├─ libs/            # Common libraries shared across services
+└─ services/        # Microservices
 ```
 
 ## 📖 Documentation
