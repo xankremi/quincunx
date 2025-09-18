@@ -1,4 +1,4 @@
-# Common Libraries Style Guide
+# Libraries Style Guide
 
 This guide describes **how to structure and maintain common libraries** (`libs/core`, `libs/infrastructure`, `libs/interfaces`) that are shared between microservices.  
 All developers should follow this guide to ensure consistency and proper DDD practices.
@@ -11,31 +11,37 @@ The recommended structure for common libraries:
 
 ```
 libs/
-├─ core/
-│ ├─ domain/ # Cross-service Domain Events, Value Objects
-│ ├─ application/ # Cross-service Commands, Queries, DTOs
+├─ domain/          # Shared aggregates, VOs, events
+│  ├─  aggregate/   # Aggregates for multiple services
+│  ├─  model/       # Entities / Value Objects
+│  └─  event/       # Domain Events
 │
-├─ infrastructure/
-│ └─ mongo/ # Mongo converters, serializers, helpers
+├─ application/     # Shared commands, queries, DTOs
+│  ├─  command/     # Shared commands
+│  ├─  query/       # Shared queries
+│  └─  dto/         # Shared DTOs for inter-service communication
 │
-└─ interfaces/ # Abstract interfaces for Messaging & API contracts
+├─ infrastructure/  # Shared technical helpers
+│  ├─  mongo/       # Mongo converters, serializers, helpers
+│  ├─  elastic/     # Elasticsearch helpers
+│  ├─  ...
+│  └─ util/         # Serializers, converters, common utils
+│
+├─ interfaces/      # Shared interfaces / contracts
+│  ├─ messaging/    # Kafka / event bus contracts
+   └─ api/          # REST, gRPC, GraphQL interfaces
 ```
-
-- **core/domain**: domain primitives, shared events
-- **core/application**: DTOs, Commands, Queries for cross-service communication
-- **infrastructure/mongo**: converters and serializers for projections
-- **interfaces**: abstract messaging or API contracts
 
 ---
 
 ## Layer Responsibilities
 
-### Domain Layer (`core/domain`)
+### Domain Layer (`libs/domain`)
 - Shared **Value Objects (VO)**, e.g., `PaymentId`, `Amount`, `Currency`, `UserId`
 - Cross-service **Domain Events**
 - **No dependencies** on Spring, Axon, Kafka
 
-### Application Layer (`core/application`)
+### Application Layer (`libs/application`)
 - Cross-service **Commands**, **Queries**, **DTOs**
 - Used by multiple microservices to maintain **consistent contracts**
 - Immutable objects and proper versioning for events
@@ -50,55 +56,16 @@ libs/
 
 ---
 
-## Value Objects (VO)
-- VO are **immutable objects** representing domain concepts.
-- They encapsulate **validation and domain rules**.
-- Use VOs in commands, events, and aggregates instead of primitive types.
-
----
-
-### Example VOs
-
-```kotlin
-data class PaymentId(override val value: String) : StringValue
-```
-
----
-
-## Example Common Command
-
-```kotlin
-data class CreatePaymentCommand(
-    val paymentId: PaymentId,
-    val amount: Amount,
-    val currency: Currency,
-    val userId: UserId
-)
-```
-
----
-
-## Example Common Event
-
-```kotlin
-data class PaymentStatusDto(
-val paymentId: PaymentId,
-val status: PaymentStatus
-)
-```
-
----
-
 ## Layered Dependency Diagram
 
 ```mermaid
 flowchart LR
 subgraph Libs[Common Libraries]
 direction TB
-CoreDomain["core/domain\n(Value Objects, Domain Events)"]
-CoreApp["core/application\n(Commands, Queries, DTOs)"]
-InfraMongo["infrastructure/mongo\n(Mongo converters, serializers)"]
-Interfaces["interfaces\n(Messaging & API contracts)"]
+CoreDomain["lib/domain\n(Shared aggregates, VOs, events)"]
+CoreApp["lib/application\n(Shared commands, queries, DTOs)"]
+InfraMongo["infrastructure\n(Shared technical helpers)"]
+Interfaces["interfaces\n(Shared interfaces / contracts)"]
 end
 
     subgraph Service[Example Service]
@@ -133,9 +100,44 @@ end
 
 ---
 
+## Examples
+
+### Shared Value Object (VO)
+
+- VO are **immutable objects** representing domain concepts.
+- They encapsulate **validation and domain rules**.
+- Use VOs in commands, events, and aggregates instead of primitive types.
+
+```kotlin
+data class PaymentId(override val value: String) : StringValue
+```
+
+### Shared Command
+
+```kotlin
+data class CreatePaymentCommand(
+    val paymentId: PaymentId,
+    val amount: Amount,
+    val currency: Currency,
+    val userId: UserId
+)
+```
+
+### Shared Data Transfer Object (DTO)
+
+```kotlin
+data class PaymentStatusDto(
+    val paymentId: PaymentId,
+    val status: PaymentStatus
+)
+```
+
+---
+
 ## Summary
 
 - Enforces consistent DDD layers in shared libraries.
 - Separates cross-service contracts from service-local logic.
 - Developers have a clear template for adding new common components.
 - Supports integration with Spring Boot, Kotlin, Axon, Kafka, MongoDB, Elasticsearch.
+
