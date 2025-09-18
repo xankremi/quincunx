@@ -1,0 +1,202 @@
+services:
+  #-----------------------------------------------------
+  # INFRASTRUCTURE SERVICES
+  #-----------------------------------------------------
+
+  # PostgreSQL - Event Store, Inbox/Outbox
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres:/docker-entrypoint-initdb.d
+
+  # Kafka - Command/Event bus
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_BROKER}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  # Zookeeper - Kafka coordination
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_datalog:/var/lib/zookeeper/log
+
+  # MongoDB - Projections (read models)
+  mongo:
+    image: mongo:7
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./init-mongo:/docker-entrypoint-initdb.d
+
+  # Elasticsearch - Search and analytics projections
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    environment:
+      discovery.type: single-node
+    ports:
+      - "${ELASTICSEARCH_PORT}:9200"
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+
+  #-----------------------------------------------------
+  # TOOLING / MONITORING SERVICES
+  #-----------------------------------------------------
+
+  # Kafka UI for monitoring topics, producers, and consumers
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "${KAFKA_UI_PORT}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BROKER}
+    depends_on:
+      - kafka
+
+  # Kibana - Elasticsearch visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    ports:
+      - "${KIBANA_PORT}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+
+  # Prometheus - metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - kafka
+      - zookeeper
+      - postgres
+      - mongo
+      - elasticsearch
+
+  # Grafana - metrics visualization dashboards
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # PostgreSQL Exporter - Prometheus metrics for Postgres
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  # MongoDB Exporter - Prometheus metrics for MongoDB
+  mongodb-exporter:
+    image: bitnami/mongodb-exporter:latest
+    environment:
+      MONGODB_URI: "mongodb://mongo:27017"
+    ports:
+      - "9216:9216"
+    depends_on:
+      - mongo
+
+  # Elasticsearch Exporter - Prometheus metrics for Elasticsearch
+  elasticsearch-exporter:
+    image: justwatch/elasticsearch_exporter:latest
+    environment:
+      ES_URI: "http://elasticsearch:9200"
+    ports:
+      - "9114:9114"
+    depends_on:
+      - elasticsearch
+
+  # Kafka JMX Exporter - Prometheus metrics for Kafka
+  kafka-jmx-exporter:
+    image: danielqsj/kafka-exporter:latest
+    environment:
+      KAFKA_BROKERS: "${KAFKA_BROKER}"
+    ports:
+      - "9308:9308"
+    depends_on:
+      - kafka
+
+  # Zookeeper Exporter - Prometheus metrics for Zookeeper
+  zookeeper-exporter:
+    image: digitalwonderland/zookeeper-exporter:latest
+    environment:
+      ZOOKEEPER_URL: "zookeeper:2181"
+    ports:
+      - "7000:7000"
+    depends_on:
+      - zookeeper
+
+  # pgAdmin - GUI for PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      - postgres
+
+  # mongo-express - GUI for MongoDB
+  mongo-express:
+    image: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: 27017
+    ports:
+      - "8082:8081"
+    depends_on:
+      - mongo
+
+#-----------------------------------------------------
+# VOLUMES
+#-----------------------------------------------------
+volumes:
+  postgres_data:
+  kafka_data:
+  zookeeper_data:
+  zookeeper_datalog:
+  mongo_data:
+  elastic_data:
+  grafana_data:
+  pgadmin_data:
